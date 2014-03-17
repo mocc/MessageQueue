@@ -39,6 +39,12 @@ public class SubscriptionStateUtils {
     // subscribers will validate that the subscriberId used cannot start with
     // this prefix. This is only used internally by the hub subscribers.
     public static final String HUB_SUBSCRIBER_PREFIX = "__";
+    
+    //add for message queue semantics
+    public static final ByteString QUEUE_RECEIVER_ID = ByteString.copyFromUtf8("queue_receiver");
+    public static final String QUEUE_PREFIX = "QUEUE_";
+    public static final String TOPIC_PREFIX = "TOPIC_";
+    //add for message queue semantics
 
     public static SubscriptionData parseSubscriptionData(byte[] data)
     throws InvalidProtocolBufferException {

@@ -28,6 +28,7 @@ import org.apache.hedwig.protocol.PubSubProtocol.OperationType;
 import org.apache.hedwig.protocol.PubSubProtocol.ProtocolVersion;
 import org.apache.hedwig.protocol.PubSubProtocol.PubSubRequest;
 import org.apache.hedwig.protocol.PubSubProtocol.PublishRequest;
+import org.apache.hedwig.protocol.PubSubProtocol.QueueMgmtRequest;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionOptions;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionPreferences;
@@ -95,6 +96,11 @@ public class NetUtils {
             pubsubRequestBuilder.setCloseSubscriptionRequest(
                 buildCloseSubscriptionRequest(pubSubData));
             break;
+        // add for message queue semantics
+        case QUEUE_MGNT:  
+            pubsubRequestBuilder.setQueueMgmtRequest(buildQueueMgmtRequest(pubSubData));
+            break;
+         // add for message queue semantics
         default:
             throw new IllegalArgumentException("Unknown argument type " + pubSubData.operationType);
         }
@@ -149,6 +155,14 @@ public class NetUtils {
         closeSubscriptionRequestBuilder.setSubscriberId(pubSubData.subscriberId);
         return closeSubscriptionRequestBuilder;
     }
+    
+    //add for message queue semantics
+    private static QueueMgmtRequest.Builder buildQueueMgmtRequest(PubSubData pubSubDate) {
+        QueueMgmtRequest.Builder queueMgmtRequestBuilder = QueueMgmtRequest.newBuilder();
+        queueMgmtRequestBuilder.setType(pubSubDate.queueOperationType);
+        return queueMgmtRequestBuilder;
+    }
+    //add for message queue semantics
 
     /**
      * Build consume request

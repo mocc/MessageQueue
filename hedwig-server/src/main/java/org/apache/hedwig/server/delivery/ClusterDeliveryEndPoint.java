@@ -15,8 +15,12 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.bookkeeper.util.MathUtils;
 import org.apache.hedwig.protocol.PubSubProtocol.PubSubResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPolicy {
+	
+	protected static final Logger logger = LoggerFactory.getLogger(ClusterDeliveryEndPoint.class);
     /**
      * when closed = true, means the whole cluster is closed, default is false
      */
@@ -50,7 +54,9 @@ public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPoli
      */
     static class DeliveryState {
         SortedSet<Long> msgs = new TreeSet<Long>();
-        int messageWindowSize; // this is a message window size for every client
+     // this is a message window size for every client
+     // if message window size equals 0, that means no throttling policy
+        int messageWindowSize; 
 
         public DeliveryState(int messageWindowSize) {
             this.messageWindowSize = messageWindowSize;
@@ -188,7 +194,7 @@ public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPoli
      * run retry policy, redeliver all timeout unconsumed messages of the whole
      * cluster
      */
-    class TimeOutRedeliveryTask implements Runnable {
+/*    class TimeOutRedeliveryTask implements Runnable {
 
         // final DeliveryState state;
         final Set<DeliveredMessage> msgs;
@@ -218,7 +224,7 @@ public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPoli
             }
         }
 
-    }
+    }*/
 
     public ClusterDeliveryEndPoint(String label, ScheduledExecutorService scheduler) {
 
@@ -288,7 +294,7 @@ public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPoli
      * whithin timeout(maybe suffer some network problem), we will run retry
      * policy, redeliver all timeout unconsumed messages of the whole cluster
      */
-    public void closeAndTimeOutRedeliver(Set<DeliveredMessage> msgs) {
+/*    public void closeAndTimeOutRedeliver(Set<DeliveredMessage> msgs) {
         closeLock.readLock().lock();
         try {
             if (closed) {
@@ -299,7 +305,7 @@ public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPoli
         } finally {
             closeLock.readLock().unlock();
         }
-    }
+    }*/
 
     /**
      * when a client drop out this cluster(like sending closeSubscription
@@ -340,7 +346,9 @@ public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPoli
         DeliveredMessage msg;
 
         msg = pendings.remove(newSeqIdConsumed);
+        logger.info("server side: the consuming message is "+ msg.msg.getMessage().getBody().toStringUtf8());
         DeliveryEndPoint lastDeliveredEP = msg.lastDeliveredEP;
+//        logger.info("the consuming message's last DeliveredEP is : "+lastDeliveredEP.toString());
 
         if (null != msg && null != lastDeliveredEP) {
 
@@ -411,8 +419,11 @@ public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPoli
 
             }
             if (null == clusterEP) {
+            	logger.info("no deliverable endPoint now , try to get it again!");
                 continue;// if there is no delverable EP ,loop
             }
+            
+//            logger.info("get a deliverable endPoint,"+ clusterEP.toString());
             DeliveryState state = endpoints.get(clusterEP);
             // update the message's deliver time and deliverEP
             msg.resetDeliveredTime(clusterEP);
@@ -424,7 +435,7 @@ public class ClusterDeliveryEndPoint implements DeliveryEndPoint, ThrottlingPoli
             pendings.put(seqid, msg);
 
             // check whether this deliveryEndpoint should be throttled,
-            if (state.msgs.size() < state.messageWindowSize) {
+            if (state.messageWindowSize == 0 || state.msgs.size() < state.messageWindowSize) {
                 deliverableEP.offer(clusterEP);
             } else {
                 throttledEP.offer(clusterEP);

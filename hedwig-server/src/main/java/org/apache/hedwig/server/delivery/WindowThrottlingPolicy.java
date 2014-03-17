@@ -47,6 +47,7 @@ public class WindowThrottlingPolicy implements ThrottlingPolicy {
             logger.debug("{} moved consumed ptr from [} to {}.", va(label, lastSeqIdConsumedUtil, newSeqIdConsumed));
         }
         lastSeqIdConsumedUtil = newSeqIdConsumed;
+        logger.info("server side: the consuming message ID is: "+newSeqIdConsumed);
         return true;
     }
 

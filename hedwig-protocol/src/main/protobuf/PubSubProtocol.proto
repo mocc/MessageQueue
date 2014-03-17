@@ -23,7 +23,6 @@ enum ProtocolVersion{
     VERSION_ONE = 1;
 }
 
-// common structure to store header or properties
 message Map {
     message Entry {
         optional string key  = 1;
@@ -73,6 +72,17 @@ enum OperationType{
     // end for requests only used for hedwig proxy
 
     CLOSESUBSCRIPTION = 6;
+    
+    // only used for Message Queue 
+    QUEUE_MGNT = 7;
+}
+
+
+// only for Message Queue 
+enum QueueOperationType{
+     CREATE = 0;
+     DELETE = 1;
+     MSG_COUNT = 2; 
 }
 
 /* A PubSubRequest is just a union of the various request types, with
@@ -99,8 +109,15 @@ message PubSubRequest{
     optional StopDeliveryRequest stopDeliveryRequest = 56;
     optional StartDeliveryRequest startDeliveryRequest = 57;
     optional CloseSubscriptionRequest closeSubscriptionRequest = 58;
+    
+    // only for Message Queue
+    optional QueueMgmtRequest queueMgmtRequest = 59;
 }
 
+//only for Message Queue
+message QueueMgmtRequest{
+    required QueueOperationType type= 1;
+}
 
 
 message PublishRequest{
@@ -240,10 +257,18 @@ message SubscribeResponse {
     optional SubscriptionPreferences preferences = 2;
 }
 
+// only for Message Queue
+message QueueMgmtResponse{
+    optional uint64 messageCount = 1;
+}
+
 message ResponseBody {
     optional PublishResponse publishResponse = 1;
     optional SubscribeResponse subscribeResponse = 2;
     optional SubscriptionEventResponse subscriptionEvent = 3;
+    
+    // only for Message Queue
+    optional QueueMgmtResponse queueMgmtResponse = 4;
 }
 
 

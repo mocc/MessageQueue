@@ -83,6 +83,7 @@ public class HedwigSubscriber implements Subscriber {
                           SubscriptionOptions options)
             throws CouldNotConnectException, ClientAlreadySubscribedException,
         ClientNotSubscribedException, ServiceDownException {
+    	
         if (logger.isDebugEnabled()) {
             StringBuilder debugMsg = new StringBuilder().append("Calling a sync subUnsub request for topic: ")
                                      .append(topic.toStringUtf8()).append(", subscriberId: ")

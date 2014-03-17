@@ -22,6 +22,7 @@ import org.jboss.netty.channel.Channel;
 import org.apache.hedwig.exceptions.PubSubException;
 import org.apache.hedwig.exceptions.PubSubException.ServerNotResponsibleForTopicException;
 import org.apache.hedwig.protocol.PubSubProtocol.PubSubRequest;
+import org.apache.hedwig.protocol.PubSubProtocol.QueueOperationType;
 import org.apache.hedwig.protoextensions.PubSubResponseUtils;
 import org.apache.hedwig.server.common.ServerConfiguration;
 import org.apache.hedwig.server.netty.ServerStats;
@@ -41,6 +42,14 @@ public abstract class BaseHandler implements Handler {
 
 
     public void handleRequest(final PubSubRequest request, final Channel channel) {
+    	//<--------add for message queue semantics
+    	if(request.hasQueueMgmtRequest() && (request.getQueueMgmtRequest().getType() != QueueOperationType.CREATE)){
+    		
+    		handleRequestAtOwner(request, channel);
+    		return;
+    	}
+    	//add for message queue semantics------>
+    	
         topicMgr.getOwner(request.getTopic(), request.getShouldClaim(),
         new Callback<HedwigSocketAddress>() {
             @Override

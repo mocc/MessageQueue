@@ -31,6 +31,7 @@ import org.apache.hedwig.exceptions.PubSubException.ServiceDownException;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.protocol.PubSubProtocol.OperationType;
 import org.apache.hedwig.protocol.PubSubProtocol.PublishResponse;
+import org.apache.hedwig.protocol.PubSubProtocol.QueueOperationType;
 import org.apache.hedwig.protocol.PubSubProtocol.ResponseBody;
 import org.apache.hedwig.util.Callback;
 
@@ -148,4 +149,34 @@ public class HedwigPublisher implements Publisher {
             delegate.operationFailed(ctx, exception);
         }
     }
+
+	@Override
+	//add for message queue
+	public void createQueue(ByteString queueName,Callback<ResponseBody> callback, Object context) {
+
+		PubSubData pubSubData = new PubSubData(queueName, null, null, 
+				OperationType.QUEUE_MGNT, QueueOperationType.CREATE, null, callback, context);
+		channelManager.submitOp(pubSubData);
+	}
+
+	@Override
+	//add for message queue
+	public void deleteQueue(ByteString queueName,
+			Callback<ResponseBody> callback, Object context) {
+		PubSubData pubSubData = new PubSubData(queueName, null, null, 
+				OperationType.QUEUE_MGNT, QueueOperationType.DELETE, null,callback, context);
+		channelManager.submitOp(pubSubData);
+		
+	}
+
+	@Override
+	//add for message queue
+	public void getMessageCount(ByteString queueName,
+			Callback<ResponseBody> callback, Object context) {
+		PubSubData pubSubData = new PubSubData(queueName, null, null, 
+				OperationType.QUEUE_MGNT, QueueOperationType.MSG_COUNT, null,callback, context);
+		channelManager.submitOp(pubSubData);
+		
+	}
+	
 }

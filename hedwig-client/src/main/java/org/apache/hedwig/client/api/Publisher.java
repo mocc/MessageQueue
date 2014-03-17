@@ -22,6 +22,7 @@ import org.apache.hedwig.exceptions.PubSubException.CouldNotConnectException;
 import org.apache.hedwig.exceptions.PubSubException.ServiceDownException;
 import org.apache.hedwig.protocol.PubSubProtocol;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
+import org.apache.hedwig.protocol.PubSubProtocol.ResponseBody;
 import org.apache.hedwig.util.Callback;
 
 /**
@@ -86,4 +87,33 @@ public interface Publisher {
    */
     public void asyncPublishWithResponse(ByteString topic, Message msg,
                                          Callback<PubSubProtocol.PublishResponse> callback, Object context);
+
+   /**
+    * this method, used for message queue client to create queues in server
+    * 
+    * @param queueName
+    * @param callback
+    * @param context
+    */
+    public void createQueue(ByteString queueName, Callback<ResponseBody> callback,
+		Object context);
+   
+    /**
+     * this method is used for message queue client to delete queues in server
+     * 
+     * @param queueName
+     * @param callback
+     * @param context
+     */
+    public void deleteQueue(ByteString queueName, Callback<ResponseBody> callback,
+		Object context);
+    
+    /**
+     * this method is used for message queue client to query message number of a topic
+     * 
+     * @param queueName
+     * @param callback
+     * @param context
+     */
+    public void getMessageCount(ByteString queueName, Callback<ResponseBody> callback, Object context);
 }

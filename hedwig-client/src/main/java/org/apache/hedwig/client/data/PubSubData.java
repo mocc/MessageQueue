@@ -24,6 +24,7 @@ import org.apache.hedwig.client.netty.HChannel;
 import org.apache.hedwig.protocol.PubSubProtocol;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.protocol.PubSubProtocol.OperationType;
+import org.apache.hedwig.protocol.PubSubProtocol.QueueOperationType;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionOptions;
 import org.apache.hedwig.util.Callback;
 
@@ -86,6 +87,9 @@ public class PubSubData {
     // Record the original channel for a resubscribe request
     private HChannel origChannel = null;
 
+    //add for message queue
+    public final QueueOperationType queueOperationType;
+    
     // Constructor for all types of PubSub request data to send to the server
     public PubSubData(final ByteString topic, final Message msg, final ByteString subscriberId,
                       final OperationType operationType, final SubscriptionOptions options,
@@ -98,8 +102,23 @@ public class PubSubData {
         this.options = options;
         this.callback = callback;
         this.context = context;
+        this.queueOperationType = null;
     }
 
+    //this constructor is added for message queue
+    public PubSubData(final ByteString queue, final Message msg, final ByteString subscriberId,
+    		final OperationType operationType, final QueueOperationType queueOperationType,
+    		final SubscriptionOptions options,final Callback<PubSubProtocol.ResponseBody> callback, final Object context){
+    	this.topic = queue;
+    	this.msg = msg;
+    	this.subscriberId = subscriberId;
+    	this.operationType = operationType;
+    	this.queueOperationType = queueOperationType;
+    	this.options = options;
+    	this.callback = callback;
+    	this.context = context;
+    }
+    
     public void setCallback(Callback<PubSubProtocol.ResponseBody> callback) {
         this.callback = callback;
     }

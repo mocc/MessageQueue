@@ -28,7 +28,9 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import org.apache.bookkeeper.versioning.Version;
 import org.apache.hedwig.exceptions.PubSubException;
+import org.apache.hedwig.exceptions.PubSubException.ServerNotResponsibleForTopicException;
 import org.apache.hedwig.protocol.PubSubProtocol.MessageSeqId;
+import org.apache.hedwig.protocol.PubSubProtocol.StatusCode;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest.CreateOrAttach;
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionData;
@@ -77,6 +79,7 @@ public abstract class AbstractSubscriptionManager implements SubscriptionManager
     private final ConcurrentHashMap<ByteString, Long> topic2MinConsumedMessagesMap = new ConcurrentHashMap<ByteString, Long>();
 
     protected final Callback<Void> noopCallback = new NoopCallback<Void>();
+   
 
     static class NoopCallback<T> implements Callback<T> {
         @Override
@@ -124,7 +127,6 @@ public abstract class AbstractSubscriptionManager implements SubscriptionManager
                 }
 
                 long minConsumedMessage = Long.MAX_VALUE;
-
                 boolean hasBound = true;
                 // Loop through all subscribers on the current topic to find the
                 // minimum persisted message id. The reason not using in-memory
@@ -141,32 +143,103 @@ public abstract class AbstractSubscriptionManager implements SubscriptionManager
                 // yet, or the consume pointer has moved ahead since the last
                 // time, or if this is the initial subscription.
                 Long minConsumedFromMap = topic2MinConsumedMessagesMap.get(topic);
-
-                // if (topicSubscriptions.isEmpty()
-                // || (minConsumedFromMap != null && minConsumedFromMap <
-                // minConsumedMessage)
-                // || (minConsumedFromMap == null && minConsumedMessage != 0))
-
+                
                 // modified for MQ sematics
-                if ((minConsumedFromMap != null && minConsumedFromMap < minConsumedMessage)
-                        || (minConsumedFromMap == null && minConsumedMessage != 0)) {
-                    // Replace or put the new min consumed value. If it has
-                    // changed
-                    // do nothing, as another thread has updated the min
-                    // consumed message
-                    if ((minConsumedFromMap != null && (topic2MinConsumedMessagesMap.replace(topic, minConsumedFromMap,
-                            minConsumedMessage)))
-                            || (topic2MinConsumedMessagesMap.putIfAbsent(topic, minConsumedMessage) == null)) {
-                        pm.consumedUntil(topic, minConsumedMessage);
-                    }
-                }
-                // else if (hasBound) {
-                // pm.consumeToBound(topic);
-                // }
+				if (topic.toStringUtf8().startsWith(SubscriptionStateUtils.QUEUE_PREFIX)) {
+					if ((minConsumedFromMap != null && minConsumedFromMap < minConsumedMessage)
+							|| (minConsumedFromMap == null && minConsumedMessage != 0)) {
+						if ((minConsumedFromMap != null && (topic2MinConsumedMessagesMap
+								.replace(topic, minConsumedFromMap,
+										minConsumedMessage)))
+								|| (topic2MinConsumedMessagesMap.putIfAbsent(
+										topic, minConsumedMessage) == null)) {
+							pm.consumedUntil(topic, minConsumedMessage);
+						}
+					}
+				} else {//reserved for PUB/SUB semantics
+					if (topicSubscriptions.isEmpty()
+							|| (minConsumedFromMap != null && minConsumedFromMap < minConsumedMessage)
+							|| (minConsumedFromMap == null && minConsumedMessage != 0)) {
+						topic2MinConsumedMessagesMap.put(topic,
+								minConsumedMessage);
+						pm.consumedUntil(topic, minConsumedMessage);
+					} else if (hasBound) {
+						pm.consumeToBound(topic);
+					}
+				}
+
             }
         }
     }
 
+    /* <-------add for MQ semantics */
+    /**
+     * Get the approximate message count for the given topic.
+     * 
+     * @param topic
+     * @param callback
+     * @param ctx
+     * 
+     */
+    public void queryMessagesForTopic(ByteString topic,
+            Callback<Long> callback, Object ctx) {
+        queuer.pushAndMaybeRun(topic, new QueryMessagesCountOp(topic, callback,
+                ctx));
+    }
+
+    /**
+     * Do the actual work, calculating the count.
+     * 
+     */
+    private class QueryMessagesCountOp extends
+    TopicOpQueuer.AsynchronousOp<Long> {
+        public QueryMessagesCountOp(ByteString topic, Callback<Long> callback,
+                Object ctx) {
+            queuer.super(topic, callback, ctx);
+        }
+
+        @Override
+        public void run() {
+            long lastMsgSeqId = 0;
+            try {
+                 lastMsgSeqId = pm.getCurrentSeqIdForTopic(topic)
+                        .getLocalComponent();
+                 logger.info("the current seq id for this topic is: "+lastMsgSeqId);
+            } catch (ServerNotResponsibleForTopicException e) {
+                cb.operationFailed(ctx, e);
+            }
+           
+            final Map<ByteString, InMemorySubscriptionState> topicSubscriptions = top2sub2seq
+                    .get(topic);
+            if (topicSubscriptions == null) {
+            	logger.info("this topic doesn't exists.......... ");
+                cb.operationFailed(ctx, PubSubException.create(StatusCode.NO_SUCH_TOPIC, "no such topic !"));
+                return;
+            }
+            
+            if(topicSubscriptions.size() == 0){
+            	logger.info("there is no sub for this topic.");
+            	cb.operationFinished(ctx, lastMsgSeqId);
+            	return;
+            	
+            }
+            logger.info("this topic has subscriber.");
+            long minConsumedMessage = Long.MAX_VALUE;
+            for (InMemorySubscriptionState curSubscription : topicSubscriptions
+                    .values()) {
+                if (curSubscription.getLastConsumeSeqId().getLocalComponent() < minConsumedMessage) {
+                    minConsumedMessage = curSubscription
+                            .getLastConsumeSeqId().getLocalComponent();
+                }
+            }
+            logger.info("this topic has subscriber, the minest consumed seqid is " + minConsumedMessage);
+            logger.info("The message count for :" + topic + " is " + (lastMsgSeqId - minConsumedMessage));
+            cb.operationFinished(ctx, lastMsgSeqId - minConsumedMessage);
+        }
+    }
+    /* add for MQ semantics--------> */
+    
+    
     private class AcquireOp extends TopicOpQueuer.AsynchronousOp<Void> {
         public AcquireOp(ByteString topic, Callback<Void> callback, Object ctx) {
             queuer.super(topic, callback, ctx);
@@ -579,7 +652,7 @@ public abstract class AbstractSubscriptionManager implements SubscriptionManager
                 return;
             }
 
-            // modified for MQ sematics
+            // modified for MQ semantics
             // update SubscriptionState in ZK every consume seqId received
             if (subState.setLastConsumeSeqId(consumeSeqId, cfg.getConsumeInterval())) {
                 updateSubscriptionState(topic, subscriberId, subState, new Callback<Void>() {

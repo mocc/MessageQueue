@@ -17,6 +17,7 @@
  */
 package org.apache.hedwig.server;
 
+import java.net.URL;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -32,6 +33,7 @@ import org.apache.hedwig.server.common.ServerConfiguration;
 import org.apache.hedwig.server.netty.PubSubServer;
 import org.apache.hedwig.server.persistence.BookKeeperTestBase;
 import org.apache.hedwig.util.HedwigSocketAddress;
+import org.apache.log4j.PropertyConfigurator;
 
 import org.apache.bookkeeper.test.PortManager;
 
@@ -58,7 +60,7 @@ public abstract class HedwigHubTestBase extends TestCase {
     protected List<PubSubServer> serversList;
     protected List<HedwigSocketAddress> serverAddresses;
 
-    protected boolean sslEnabled = true;
+    protected boolean sslEnabled = false;
     protected boolean standalone = false;
 
     protected static final String HOST = "localhost";
@@ -175,7 +177,7 @@ public abstract class HedwigHubTestBase extends TestCase {
     @Override
     @Before
     protected void setUp() throws Exception {
-        logger.info("STARTING " + getName());
+        logger.info("STARTING " + this.getName());
         if (! standalone) {
             bktb = new BookKeeperTestBase(numBookies, readDelay);
             bktb.setUp();

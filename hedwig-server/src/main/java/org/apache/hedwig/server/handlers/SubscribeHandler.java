@@ -85,7 +85,11 @@ public class SubscribeHandler extends BaseHandler {
 
         MessageSeqId consumeSeqId;
         try {
-            consumeSeqId = persistenceMgr.getLastSeqIdReceived(topic);
+        	if(topic.toStringUtf8().startsWith(SubscriptionStateUtils.QUEUE_PREFIX))
+        		consumeSeqId = persistenceMgr.getLastSeqIdReceived(topic);
+        	else
+        		 consumeSeqId = persistenceMgr.getCurrentSeqIdForTopic(topic);
+        	
         } catch (ServerNotResponsibleForTopicException e) {
             channel.write(PubSubResponseUtils.getResponseForException(e, request.getTxnId()));
             logger.error("Error getting current seq id for topic " + topic.toStringUtf8()

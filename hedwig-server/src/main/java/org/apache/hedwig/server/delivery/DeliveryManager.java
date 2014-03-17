@@ -93,4 +93,7 @@ public interface DeliveryManager {
      * Stop delivery manager
      */
     public void stop();
+
+    // add for message queue semantics
+	boolean deleteQueuePersistenceInfo(ByteString topic);
 }

@@ -65,13 +65,6 @@ public class StubDeliveryManager implements DeliveryManager {
         cb.operationFinished(ctx, null);
     }
 
-    @Override
-    public void stopServingSubscriber(ByteString topic, ByteString subscriberId,
-                                      SubscriptionEvent event,
-                                      Callback<Void> cb, Object ctx) {
-        lastRequest.add(new TopicSubscriber(topic, subscriberId));
-        cb.operationFinished(ctx, null);
-    }
 
     @Override
     public void messageConsumed(ByteString topic, ByteString subscriberId,
@@ -87,4 +80,18 @@ public class StubDeliveryManager implements DeliveryManager {
     public void stop() {
         // do nothing now
     }
+
+	@Override
+	public void stopServingSubscriber(ByteString topic,
+			ByteString subscriberId, SubscriptionEvent event,
+			DeliveryEndPoint endPoint, Callback<Void> callback, Object ctx) {
+      lastRequest.add(new TopicSubscriber(topic, subscriberId));
+      callback.operationFinished(ctx, null);
+	}
+
+	@Override
+	public boolean deleteQueuePersistenceInfo(ByteString topic) {
+		// TODO Auto-generated method stub
+		return false;
+	}
 }

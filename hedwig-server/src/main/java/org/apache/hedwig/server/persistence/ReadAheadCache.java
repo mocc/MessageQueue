@@ -169,7 +169,14 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
     public ReadAheadCache start() {
         return this;
     }
-
+    
+    /**
+     * add for MQ sematics
+     * @return
+     */
+    public PersistenceManager getRealPersistenceManager(){
+    	return this.realPersistenceManager;
+    }
     /**
      * ========================================================================
      * Methods of {@link PersistenceManager} that we will pass straight down to
@@ -184,6 +191,12 @@ public class ReadAheadCache implements PersistenceManager, HedwigJMXService {
         return realPersistenceManager.getCurrentSeqIdForTopic(topic);
     }
 
+    /**
+     * add for MQ sematics
+     * @param topic
+     * @return
+     * @throws ServerNotResponsibleForTopicException
+     */
     public MessageSeqId getLastSeqIdReceived(ByteString topic) throws ServerNotResponsibleForTopicException {
         return realPersistenceManager.getLastSeqIdReceived(topic);
     }

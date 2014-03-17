@@ -574,7 +574,21 @@ public class BookkeeperPersistenceManager implements PersistenceManagerWithRange
 
     }
 
-    // add for MQ sematics
+    /**
+     * add for MQ sematics
+     * @return
+     */
+    public PersistenceManager getUnderlyingPM(){
+    	return this;
+    }
+    
+    public TopicPersistenceManager getTopicPersistenceManager(){
+    	return this.tpManager;
+    }
+    
+    /**
+     * add for MQ sematics
+     */
     public MessageSeqId getLastSeqIdReceived(ByteString topic) throws ServerNotResponsibleForTopicException {
         TopicInfo topicInfo = topicInfos.get(topic);
 

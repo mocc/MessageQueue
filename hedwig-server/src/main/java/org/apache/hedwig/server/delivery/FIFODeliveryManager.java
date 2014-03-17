@@ -21,6 +21,7 @@ import static org.apache.hedwig.util.VarArgs.va;
 
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
@@ -62,6 +63,8 @@ import org.apache.hedwig.server.persistence.ScanCallback;
 import org.apache.hedwig.server.persistence.ScanRequest;
 import org.apache.hedwig.server.topics.TopicManager;
 import org.apache.hedwig.util.Callback;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooKeeper;
 import org.jboss.netty.channel.Channel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -105,6 +108,8 @@ public class FIFODeliveryManager implements DeliveryManager, SubChannelDisconnec
     private final PersistenceManager persistenceMgr;
     private final TopicManager tm;
     private final ServerConfiguration cfg;
+    // add for message queue sematics
+    private  ZooKeeper zk;
 
     private final int numDeliveryWorkers;
     private final DeliveryWorker[] deliveryWorkers;
@@ -287,6 +292,29 @@ public class FIFODeliveryManager implements DeliveryManager, SubChannelDisconnec
         }
     }
 
+    // add for message queue semantics
+    public FIFODeliveryManager(TopicManager tm, PersistenceManager persistenceMgr, ServerConfiguration cfg, ZooKeeper zk){
+        this.tm = tm;
+        this.persistenceMgr = persistenceMgr;
+        if (persistenceMgr instanceof ReadAheadCache) {
+            this.cache = (ReadAheadCache) persistenceMgr;
+        } else {
+            this.cache = null;
+        }
+        perTopicDeliveryPtrs = new ConcurrentHashMap<ByteString, SortedMap<Long, Set<ActiveSubscriberState>>>();
+        subscriberStates = new ConcurrentHashMap<TopicSubscriber, ActiveSubscriberState>();
+        this.cfg = cfg;
+        this.zk = zk;
+        // initialize the delivery workers
+        this.numDeliveryWorkers = cfg.getNumDeliveryThreads();
+        this.deliveryWorkers = new DeliveryWorker[numDeliveryWorkers];
+        for (int i = 0; i < numDeliveryWorkers; i++) {
+            deliveryWorkers[i] = new DeliveryWorker(i);
+        }
+    } 
+    // *** add for message queue semantics **** 
+    
+    
     @Override
     public void start() {
         for (int i = 0; i < numDeliveryWorkers; i++) {
@@ -367,7 +395,7 @@ public class FIFODeliveryManager implements DeliveryManager, SubChannelDisconnec
             if (FIFODeliveryManager.this.cfg.getDefaultMessageWindowSize() > 0) {
                 messageWindowSize = FIFODeliveryManager.this.cfg.getDefaultMessageWindowSize();
             } else {
-                messageWindowSize = WindowThrottlingPolicy.UNLIMITED;
+                messageWindowSize = 0;//which means no window throttling policy
             }
         }
         if (preferences.hasSubscriptionType() && SubscriptionType.CLUSTER == preferences.getSubscriptionType()) {
@@ -379,7 +407,7 @@ public class FIFODeliveryManager implements DeliveryManager, SubChannelDisconnec
             StartServingClusterSubscriberRequest request = new StartServingClusterSubscriberRequest(subscriber,
                     endPoint, messageWindowSize);
             enqueueWithoutFailure(topic, request);
-            clusterDeliveryScheduler.scheduleAtFixedRate(new Runnable() {
+/*            clusterDeliveryScheduler.scheduleAtFixedRate(new Runnable() {
 
                 @Override
                 public void run() {
@@ -387,7 +415,7 @@ public class FIFODeliveryManager implements DeliveryManager, SubChannelDisconnec
                     subscriber.checkExpiredMessages(System.currentTimeMillis());
                 }
 
-            }, 0, 5, TimeUnit.SECONDS);
+            }, 0, 5, TimeUnit.SECONDS);*/
 
         } else {
             SimpleSubscriber subscriber = new SimpleSubscriber(topic, subscriberId, preferences,
@@ -542,7 +570,7 @@ public class FIFODeliveryManager implements DeliveryManager, SubChannelDisconnec
         Long lastCheckTime = System.currentTimeMillis();
 
         // checking expired unconsumed messages in cluster
-        private void checkExpiredMessages(long currentTime) {
+/*        private void checkExpiredMessages(long currentTime) {
             Set<DeliveredMessage> msgs = new HashSet<DeliveredMessage>();
             for (Long seq : clusterEP.pendings.keySet()) {
                 DeliveredMessage msg = clusterEP.pendings.get(seq);
@@ -554,7 +582,7 @@ public class FIFODeliveryManager implements DeliveryManager, SubChannelDisconnec
                 logger.info("msgseq " + seq + " timeout...............");
             }
             clusterEP.closeAndTimeOutRedeliver(msgs);
-        }
+        }*/
 
         public ClusterSubscriber(ByteString topic, ByteString subscriberId, SubscriptionPreferences preferences,
                 long lastLocalSeqIdDelivered, ClusterDeliveryEndPoint deliveryEndPoint, ServerMessageFilter filter,
@@ -1131,5 +1159,45 @@ public class FIFODeliveryManager implements DeliveryManager, SubChannelDisconnec
                 channel), NOP_CALLBACK, null);
 
     }
+    
+    /**
+     * ==========================================================================================
+     * 
+     * methods added for message queue semantics
+     * 
+     */
+    @Override
+    public boolean deleteQueuePersistenceInfo(ByteString topic){
+    	
+    	String topicPath = cfg.getZkTopicPath(new StringBuilder(), topic).toString();
+    	return zkDeleteRecursive(topicPath);
+    }
 
+    public boolean zkDeleteRecursive(String path) {
+        List<String> children = null;
+
+        try {
+            children = zk.getChildren(path, false);
+        } catch (KeeperException.NoNodeException e) {
+            return true;
+        } catch (KeeperException e) {
+            return false;
+        } catch (InterruptedException e) {
+            return false;
+        }
+
+        for (String subPath : children) {
+            if (!zkDeleteRecursive(path + "/" + subPath)) {
+                return false;
+            }
+        }
+
+        try {
+            zk.delete(path, -1); // -1 matches any varsion
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+    //**** methods added for message queue semantics ***
 }

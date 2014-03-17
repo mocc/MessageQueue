@@ -62,6 +62,7 @@ import org.apache.hedwig.server.handlers.ConsumeHandler;
 import org.apache.hedwig.server.handlers.Handler;
 import org.apache.hedwig.server.handlers.NettyHandlerBean;
 import org.apache.hedwig.server.handlers.PublishHandler;
+import org.apache.hedwig.server.handlers.QueueHandler;
 import org.apache.hedwig.server.handlers.SubscribeHandler;
 import org.apache.hedwig.server.handlers.SubscriptionChannelManager;
 import org.apache.hedwig.server.handlers.SubscriptionChannelManager.SubChannelDisconnectedListener;
@@ -235,6 +236,8 @@ public class PubSubServer {
         handlers.put(OperationType.CONSUME, new ConsumeHandler(tm, sm, conf));
         handlers.put(OperationType.CLOSESUBSCRIPTION,
                      new CloseSubscriptionHandler(conf, tm, sm, dm, subChannelMgr));
+        //add for Message Queue
+        handlers.put(OperationType.QUEUE_MGNT, new QueueHandler(conf, tm, pm, sm, dm, subChannelMgr));
         handlers = Collections.unmodifiableMap(handlers);
         return handlers;
     }
@@ -411,7 +414,10 @@ public class PubSubServer {
                     instantiateMetadataManagerFactory();
                     tm = instantiateTopicManager();
                     pm = instantiatePersistenceManager(tm);
-                    dm = new FIFODeliveryManager(tm, pm, conf);
+                    
+                    //modified for message queue semantics
+                    //dm = new FIFODeliveryManager(tm, pm, conf);
+                    dm = new FIFODeliveryManager(tm, pm, conf, zk);
                     dm.start();
 
                     sm = instantiateSubscriptionManager(tm, pm, dm);
