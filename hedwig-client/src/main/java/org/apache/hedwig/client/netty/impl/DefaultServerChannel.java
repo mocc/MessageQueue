@@ -57,7 +57,9 @@ class DefaultServerChannel extends HChannelImpl {
         // we would establish a fresh connection for it
         ClientChannelPipelineFactory pipelineFactory;
         if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
-            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType) ||
+            /*add for message queue semantics*/
+            OperationType.QUEUE_MGNT.equals(pubSubData.operationType)) {
             pipelineFactory = channelManager.getNonSubscriptionChannelPipelineFactory();
         } else {
             pipelineFactory = channelManager.getSubscriptionChannelPipelineFactory();
@@ -84,6 +86,7 @@ class DefaultServerChannel extends HChannelImpl {
                 }
                 logger.debug("Connected to host {} for pubSubData: {}",
                              va(host, pubSubData));
+                logger.debug("initial channel connected: " + future.getChannel().toString());
                 channelManager.submitOpThruChannel(pubSubData, future.getChannel());
             }
         });

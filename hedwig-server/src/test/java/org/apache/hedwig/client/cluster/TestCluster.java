@@ -46,8 +46,12 @@ import org.apache.hedwig.client.api.MessageHandler;
 import org.apache.hedwig.client.api.Publisher;
 import org.apache.hedwig.client.api.Subscriber;
 import org.apache.hedwig.client.conf.ClientConfiguration;
+import org.apache.hedwig.client.netty.HedwigPublisher;
+import org.apache.hedwig.client.netty.HedwigSubscriber;
 import org.apache.hedwig.exceptions.PubSubException;
 import org.apache.hedwig.exceptions.PubSubException.ClientNotSubscribedException;
+import org.apache.hedwig.exceptions.PubSubException.CouldNotConnectException;
+import org.apache.hedwig.exceptions.PubSubException.ServiceDownException;
 import org.apache.hedwig.protocol.PubSubProtocol.Message;
 import org.apache.hedwig.protocol.PubSubProtocol.MessageSeqId;
 import org.apache.hedwig.protocol.PubSubProtocol.PublishResponse;
@@ -56,6 +60,8 @@ import org.apache.hedwig.protocol.PubSubProtocol.SubscribeRequest.CreateOrAttach
 import org.apache.hedwig.protocol.PubSubProtocol.SubscriptionOptions;
 import org.apache.hedwig.server.HedwigHubTestBase;
 import org.apache.hedwig.server.common.ServerConfiguration;
+import org.apache.hedwig.server.persistence.MessageBoundedPersistenceTest;
+import org.apache.hedwig.server.regions.HedwigHubClient;
 import org.apache.hedwig.util.Callback;
 import org.apache.hedwig.util.HedwigSocketAddress;
 
@@ -111,7 +117,7 @@ public class TestCluster extends HedwigHubTestBase {
 
     @Parameters
     public static Collection<Object[]> configs() {
-        return Arrays.asList(new Object[][] { { false } });
+        return Arrays.asList(new Object[][] { { true } });
     }
 
     protected boolean isSubscriptionChannelSharingEnabled;
@@ -142,7 +148,7 @@ public class TestCluster extends HedwigHubTestBase {
         return new myServerConfiguration(port, sslPort);
     }
 
-    @Test(timeout=60000)
+//    @Test(timeout=60000)
     public void testMutiClients() throws Exception {
         ByteString topic = ByteString.copyFromUtf8("testAsyncPublishWithResponse");
         ByteString subid = ByteString.copyFromUtf8("mysubid");
@@ -248,6 +254,28 @@ public class TestCluster extends HedwigHubTestBase {
         subscriber2.closeSubscription(topic, subid);
         client2.close();
 
+    }
+    
+    @Test
+    public void testNettyChannel() throws Exception{
+    	HedwigClient  client = new HedwigClient(new HubClientConfiguration());
+    	Publisher publisher = client.getPublisher();
+        Subscriber subscriber = client.getSubscriber();
+        
+        ByteString topic = ByteString.copyFromUtf8("testChannel");
+        ByteString topic2 = ByteString.copyFromUtf8("testNettyChannel2");
+        ByteString subID = ByteString.copyFromUtf8("sub");
+        ByteString subID2 = ByteString.copyFromUtf8("sub2");
+        
+        publisher.publish(topic, Message.newBuilder().setBody(ByteString.copyFromUtf8("msg")).build() );
+//        publisher.publish(topic2, Message.newBuilder().setBody(ByteString.copyFromUtf8("msg")).build() );
+        SubscriptionOptions options = SubscriptionOptions.newBuilder()
+                .setCreateOrAttach(CreateOrAttach.CREATE_OR_ATTACH)
+                .setSubscriptionType(SubscriptionType.INDIVIDUAL)
+                .build();
+        subscriber.subscribe(topic, subID, options);
+//        subscriber.subscribe(topic2, subID, options);
+        subscriber.subscribe(topic, subID2, options);
     }
 
 }

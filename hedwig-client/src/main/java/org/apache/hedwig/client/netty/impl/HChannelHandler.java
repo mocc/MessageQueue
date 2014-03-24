@@ -78,9 +78,6 @@ public class HChannelHandler extends SimpleChannelHandler {
         this.channelManager = channelManager;
         this.handlers = handlers;
        
-        /* add for message queue semantics */        
-        handlers.put(OperationType.QUEUE_MGNT, new QueueResponseHandler(cfg, channelManager));
-        
         subHandler = (SubscribeResponseHandler) handlers.get(OperationType.SUBSCRIBE);
     }
 

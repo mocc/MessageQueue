@@ -23,6 +23,7 @@ import java.util.Map;
 import org.apache.hedwig.client.conf.ClientConfiguration;
 import org.apache.hedwig.client.handlers.AbstractResponseHandler;
 import org.apache.hedwig.client.handlers.PublishResponseHandler;
+import org.apache.hedwig.client.handlers.QueueResponseHandler;
 import org.apache.hedwig.client.handlers.UnsubscribeResponseHandler;
 import org.apache.hedwig.protocol.PubSubProtocol.OperationType;
 
@@ -41,6 +42,9 @@ public class NonSubscriptionChannelPipelineFactory extends ClientChannelPipeline
                      new PublishResponseHandler(cfg, channelManager));
         handlers.put(OperationType.UNSUBSCRIBE,
                      new UnsubscribeResponseHandler(cfg, channelManager));
+        //add for message queue semantics
+        handlers.put(OperationType.QUEUE_MGNT, 
+        		new QueueResponseHandler(cfg, channelManager));
         return handlers;
     }
 

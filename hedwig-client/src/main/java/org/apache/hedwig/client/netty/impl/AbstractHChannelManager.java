@@ -211,7 +211,8 @@ public abstract class AbstractHChannelManager implements HChannelManager {
     public void submitOp(PubSubData pubSubData) {
         HChannel hChannel;
         if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
-            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType) ||
+            OperationType.QUEUE_MGNT.equals(pubSubData.operationType)) {
             hChannel = getNonSubscriptionChannelByTopic(pubSubData.topic);
         } else {
             TopicSubscriber ts = new TopicSubscriber(pubSubData.topic,
@@ -232,7 +233,8 @@ public abstract class AbstractHChannelManager implements HChannelManager {
                      va(pubSubData, host));
         HChannel hChannel;
         if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
-            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType) ||
+            OperationType.QUEUE_MGNT.equals(pubSubData.operationType)) {
             hChannel = getNonSubscriptionChannel(host);
             if (null == hChannel) {
                 // create a channel to connect to specified host
@@ -258,7 +260,8 @@ public abstract class AbstractHChannelManager implements HChannelManager {
                      va(pubSubData, channel));
         HChannel hChannel;
         if (OperationType.PUBLISH.equals(pubSubData.operationType) ||
-            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType)) {
+            OperationType.UNSUBSCRIBE.equals(pubSubData.operationType) ||
+            OperationType.QUEUE_MGNT.equals(pubSubData.operationType)) {
             hChannel = createAndStoreNonSubscriptionChannel(channel);
         } else {
             hChannel = createAndStoreSubscriptionChannel(channel);
